@@ -55,6 +55,12 @@
     </div>
     {% endif %}
 
+    {% if identifier == "WhisperSubtitleTool" %}
+    <div class="alert alert-info">
+        {{ _('Laden Sie eine Audio- oder Videodatei hoch, um automatisch Untertitel zu generieren. Je nach Dateigröße und gewähltem Modell kann die Verarbeitung einige Minuten dauern.') }}
+    </div>
+    {% endif %}
+
 
     <br>
     <form action="{{ url_for('handle_tool') }}" method="post" enctype="multipart/form-data" id="toolForm">
@@ -354,6 +360,20 @@ document.addEventListener("DOMContentLoaded", updateUnitOptions);
                             <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                         </div>
                     </div>
+                {% elif identifier == "WhisperSubtitleTool" %}
+                    <div class="form-group">
+                        <label for="{{ param }}">{{ _('Audio-/Videodatei auswählen:') }}</label>
+                        <input type="file" name="{{ param }}" id="{{ param }}" class="form-control" accept="audio/*,video/*">
+                        <small class="form-text text-muted">{{ _('Unterstützte Formate: MP3, WAV, MP4, AVI, MOV und weitere') }}</small>
+                    </div>
+                    <div id="whisperProgressContainer" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 0%" id="whisperProgressBar"></div>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted" id="whisperProgressText">{{ _('Audiodatei wird verarbeitet...') }}</small>
+                        </div>
+                    </div>
                 {% else %}
                     <label for="{{ param }}">{{ param }}:</label>
                     <input type="file" name="{{ param }}" id="{{ param }}">
@@ -467,6 +487,99 @@ document.addEventListener("DOMContentLoaded", updateUnitOptions);
         
         return true;
     };
+    </script>
+    {% endif %}
+
+    {% if identifier == "WhisperSubtitleTool" %}
+    <script>
+    let whisperProcessing = false;
+    let progressIntervals = [];
+    let formSubmitted = false;
+    
+    // Add beforeunload event listener to warn about leaving during processing
+    window.addEventListener('beforeunload', function(e) {
+        if (whisperProcessing && !formSubmitted) {
+            const message = '{{ _("Die Whisper-Verarbeitung läuft noch. Wenn Sie die Seite verlassen, wird der Prozess abgebrochen.") }}';
+            e.preventDefault();
+            e.returnValue = message;
+            return message;
+        }
+    });
+    
+    // Add unload event listener to cleanup when leaving
+    window.addEventListener('unload', function() {
+        if (whisperProcessing) {
+            // Clear all intervals
+            progressIntervals.forEach(interval => clearInterval(interval));
+            progressIntervals = [];
+            whisperProcessing = false;
+        }
+    });
+    
+    document.getElementById('toolForm').onsubmit = function() {
+        const progressContainer = document.getElementById('whisperProgressContainer');
+        const progressBar = document.getElementById('whisperProgressBar');
+        const progressText = document.getElementById('whisperProgressText');
+        const submitButton = document.getElementById('submitButton');
+        
+        // Set processing state and form submission flag
+        whisperProcessing = true;
+        formSubmitted = true;
+        
+        // Show progress container and disable submit button
+        progressContainer.style.display = 'block';
+        submitButton.disabled = true;
+        submitButton.textContent = '{{ _("Wird verarbeitet...") }}';
+        
+        // Progress simulation with different stages
+        let progress = 0;
+        let stage = 0;
+        const stages = [
+            { max: 20, text: '{{ _("Modell wird geladen...") }}', duration: 200 },
+            { max: 60, text: '{{ _("Audiodatei wird verarbeitet...") }}', duration: 300 },
+            { max: 90, text: '{{ _("Untertitel werden generiert...") }}', duration: 400 }
+        ];
+        
+        function updateProgress() {
+            const currentStage = stages[stage];
+            if (!currentStage) return;
+            
+            progressText.textContent = currentStage.text;
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 3 + 1; // Random increment between 1-4
+                
+                if (progress >= currentStage.max) {
+                    progress = currentStage.max;
+                    clearInterval(interval);
+                    // Remove from tracking array
+                    const index = progressIntervals.indexOf(interval);
+                    if (index > -1) progressIntervals.splice(index, 1);
+                    
+                    stage++;
+                    
+                    if (stage < stages.length) {
+                        setTimeout(updateProgress, 500);
+                    }
+                }
+                
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+            }, currentStage.duration);
+            
+            // Track interval for cleanup
+            progressIntervals.push(interval);
+        }
+        
+        updateProgress();
+        return true;
+    };
+    
+    // Reset processing state when form submission completes or page loads
+    window.addEventListener('load', function() {
+        whisperProcessing = false;
+        formSubmitted = false;
+    });
     </script>
     {% endif %}
 {% endblock %}

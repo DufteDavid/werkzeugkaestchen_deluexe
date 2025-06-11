@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 from enum import Enum
 from flask_babel import lazy_gettext as _
+import time
 
 import torch
 import base64 # Added import
@@ -64,6 +65,9 @@ class WhisperSubtitleTool(MiniTool):
         self.language_label = _("Sprache:")
         self.model_size_label = _("Modellgröße:")
         self.task_label = _("Aufgabe:")
+        self.processing_message = _("Audiodatei wird verarbeitet...")
+        self.loading_model_message = _("Modell wird geladen...")
+        self.generating_subtitles_message = _("Untertitel werden generiert...")
 
     def execute_tool(self, input_params: dict) -> bool:
         try:
@@ -99,8 +103,13 @@ class WhisperSubtitleTool(MiniTool):
 
             print("gpu available: " + str(torch.cuda.is_available()))
             gpu = torch.cuda.is_available()
-            model = whisper.load_model(model_size)
+            device = "cuda" if gpu else "cpu"
+            model = whisper.load_model(model_size, device=device)
 
+            print(f"Starting Whisper transcription...")
+            print(f"Model: {model_size}, Language: {language}, Task: {task}")
+            print(f"Input file: {input_file_cleared}")
+            
             whisper_output = model.transcribe(
                 input_file_cleared,
                 task=task,
@@ -108,6 +117,8 @@ class WhisperSubtitleTool(MiniTool):
                 verbose=True,
                 fp16=gpu,
             )
+            
+            print("Whisper transcription completed successfully.")
 
             temp_dir = str(tempfile.gettempdir())
             audio = whisper.load_audio(input_file_cleared)

@@ -3369,6 +3369,38 @@ msgstr "Audio data could not be loaded from '{0}'"
 msgid "SRT-Datei konnte nicht gelesen oder kodiert werden:"
 msgstr "SRT file could not be read or encoded:"
 
+#: tools/whisper_subtitle/whisper_subtitle_tool.py:68
+msgid "Audiodatei wird verarbeitet..."
+msgstr "Processing audio file..."
+
+#: tools/whisper_subtitle/whisper_subtitle_tool.py:69
+msgid "Modell wird geladen..."
+msgstr "Loading model..."
+
+#: tools/whisper_subtitle/whisper_subtitle_tool.py:70
+msgid "Untertitel werden generiert..."
+msgstr "Generating subtitles..."
+
+#: templates/variable_input_mask.jinja:60
+msgid "Laden Sie eine Audio- oder Videodatei hoch, um automatisch Untertitel zu generieren. Je nach Dateigröße und gewähltem Modell kann die Verarbeitung einige Minuten dauern."
+msgstr "Upload an audio or video file to automatically generate subtitles. Depending on file size and chosen model, processing may take several minutes."
+
+#: templates/variable_input_mask.jinja:365
+msgid "Audio-/Videodatei auswählen:"
+msgstr "Select audio/video file:"
+
+#: templates/variable_input_mask.jinja:367
+msgid "Unterstützte Formate: MP3, WAV, MP4, AVI, MOV und weitere"
+msgstr "Supported formats: MP3, WAV, MP4, AVI, MOV and more"
+
+#: templates/variable_input_mask.jinja:504
+msgid "Wird verarbeitet..."
+msgstr "Processing..."
+
+#: templates/variable_input_mask.jinja:501
+msgid "Die Whisper-Verarbeitung läuft noch. Wenn Sie die Seite verlassen, wird der Prozess abgebrochen."
+msgstr "Whisper processing is still running. If you leave the page, the process will be aborted."
+
 #: tools/word_counter/word_counter_tool.py:6
 msgid "Wortzähler"
 msgstr "Word Counter"
