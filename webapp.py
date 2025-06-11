@@ -1,5 +1,6 @@
 import os
 import tempfile
+import secrets
 from flask import Flask, render_template, request, redirect, send_from_directory, url_for, flash, jsonify, send_file, session
 from flask_babel import Babel, gettext as _
 from markupsafe import Markup
@@ -40,7 +41,69 @@ app = Flask(__name__)
 
 # Festlegen eines geheimen Schlüssels für die Anwendung.
 # Dieser Schlüssel wird für die Sitzungsverwaltung und andere sicherheitsrelevante Funktionen verwendet.
-app.secret_key = 'supersecretkey'
+# Verwendet Umgebungsvariable oder generiert sicheren zufälligen Schlüssel
+app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+
+# Sicherheitseinstellungen für File-Uploads
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB Default-Limit für große Dateien
+app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
+
+# Erlaubte Dateierweiterungen für verschiedene Tool-Typen
+ALLOWED_EXTENSIONS = {
+    'image': {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'},
+    'audio': {'mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg'},
+    'video': {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm'},
+    'pdf': {'pdf'},
+    'text': {'txt', 'json', 'csv', 'xml'}
+}
+
+# Spezifische Upload-Limits für verschiedene Tools (in MB)
+TOOL_UPLOAD_LIMITS = {
+    'WhisperSubtitleTool': 2048,        # 2GB für Audio/Video
+    'GifVideoConverterTool': 1024,      # 1GB für Video zu GIF
+    'AudioConverterTool': 512,          # 512MB für Audio
+    'VideoConverterTool': 2048,         # 2GB für Video
+    'ImageConverterTool': 50,           # 50MB für Bilder
+    'ImageCropperTool': 50,             # 50MB für Bilder
+    'PdfMergeTool': 200,                # 200MB für PDFs
+    'PdfSplitTool': 200,                # 200MB für PDFs
+    'OcrScannerTool': 100,              # 100MB für OCR
+    'default': 100                      # 100MB Standard
+}
+
+def allowed_file(filename, file_type='all'):
+    """Überprüft, ob eine Datei einen erlaubten Dateityp hat."""
+    if not filename or '.' not in filename:
+        return False
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    if file_type == 'all':
+        all_extensions = set()
+        for exts in ALLOWED_EXTENSIONS.values():
+            all_extensions.update(exts)
+        return extension in all_extensions
+    
+    return extension in ALLOWED_EXTENSIONS.get(file_type, set())
+
+def check_file_size(file, tool_name):
+    """Überprüft, ob eine Datei das spezifische Limit für das Tool überschreitet."""
+    if not file:
+        return True, ""
+    
+    # Aktuelle Position speichern
+    file.seek(0, 2)  # Zum Ende der Datei
+    file_size = file.tell()
+    file.seek(0)  # Zurück zum Anfang
+    
+    # Limit für das spezifische Tool holen
+    limit_mb = TOOL_UPLOAD_LIMITS.get(tool_name, TOOL_UPLOAD_LIMITS['default'])
+    limit_bytes = limit_mb * 1024 * 1024
+    
+    if file_size > limit_bytes:
+        return False, _("Datei ist zu groß. Maximum für {0}: {1}MB").format(tool_name, limit_mb)
+    
+    return True, ""
 
 
 # Sprachauswahl-Funktion
@@ -197,7 +260,7 @@ def handle_tool():
 
     input_params = {}
 
-    # Handle file uploads
+    # Handle file uploads with security validation
     temp_dir = tempfile.gettempdir()
 
     if request.form.get("tool_name") == "PdfMergeTool":
@@ -205,7 +268,22 @@ def handle_tool():
         files_info = []
 
         for file in uploaded_files:
-            if file and file.filename.lower().endswith(".pdf"):
+            if file and file.filename:
+                # Sicherheitsvalidierung
+                if not allowed_file(file.filename, 'pdf'):
+                    return render_template('output.html',
+                                           toolName=tool.name,
+                                           output_text=_("Nur PDF-Dateien sind erlaubt."),
+                                           has_error=True)
+                
+                # Dateigröße-Überprüfung
+                size_ok, size_error = check_file_size(file, tool_name)
+                if not size_ok:
+                    return render_template('output.html',
+                                           toolName=tool.name,
+                                           output_text=size_error,
+                                           has_error=True)
+                
                 file_path = os.path.join(temp_dir, file.filename)
                 file.save(file_path)
                 files_info.append({
@@ -220,6 +298,34 @@ def handle_tool():
     else:
         for key, file in request.files.items():
             if file and file.filename != '':
+                # Dateitypvalidierung basierend auf Tool
+                file_type = 'all'  # Standard: alle Dateitypen erlaubt
+                
+                if 'image' in tool_name.lower():
+                    file_type = 'image'
+                elif 'audio' in tool_name.lower() or 'whisper' in tool_name.lower():
+                    file_type = 'audio'
+                elif 'video' in tool_name.lower():
+                    file_type = 'video'
+                elif 'pdf' in tool_name.lower():
+                    file_type = 'pdf'
+                
+                # Sicherheitsvalidierung
+                if not allowed_file(file.filename, file_type):
+                    allowed_exts = ', '.join(ALLOWED_EXTENSIONS.get(file_type, ['alle']))
+                    return render_template('output.html',
+                                           toolName=tool.name,
+                                           output_text=_("Dateityp nicht erlaubt. Erlaubte Formate: {0}").format(allowed_exts),
+                                           has_error=True)
+                
+                # Dateigröße-Überprüfung
+                size_ok, size_error = check_file_size(file, tool_name)
+                if not size_ok:
+                    return render_template('output.html',
+                                           toolName=tool.name,
+                                           output_text=size_error,
+                                           has_error=True)
+                
                 file_path = os.path.join(temp_dir, file.filename)
                 file.save(file_path)
                 input_params[key] = {
@@ -509,6 +615,14 @@ def download_extracted_text(token):
                 print(f"Error cleaning up files: {str(e)}")
 
     return response
+
+# Error Handler für zu große Dateien
+@app.errorhandler(413)
+def too_large(e):
+    return render_template('output.html',
+                          toolName=_("Fehler"),
+                          output_text=_("Die hochgeladene Datei ist zu groß. Maximum: 2GB"),
+                          has_error=True), 413
 
 # byebye
 @app.route('/robots.txt')

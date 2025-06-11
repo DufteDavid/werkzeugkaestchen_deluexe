@@ -3397,6 +3397,26 @@ msgstr "Supported formats: MP3, WAV, MP4, AVI, MOV and more"
 msgid "Wird verarbeitet..."
 msgstr "Processing..."
 
+#: webapp.py:243
+msgid "Nur PDF-Dateien sind erlaubt."
+msgstr "Only PDF files are allowed."
+
+#: webapp.py:277
+msgid "Dateityp nicht erlaubt. Erlaubte Formate: {0}"
+msgstr "File type not allowed. Allowed formats: {0}"
+
+#: webapp.py:574
+msgid "Fehler"
+msgstr "Error"
+
+#: webapp.py:104
+msgid "Datei ist zu groß. Maximum für {0}: {1}MB"
+msgstr "File is too large. Maximum for {0}: {1}MB"
+
+#: webapp.py:624
+msgid "Die hochgeladene Datei ist zu groß. Maximum: 2GB"
+msgstr "The uploaded file is too large. Maximum: 2GB"
+
 #: templates/variable_input_mask.jinja:501
 msgid "Die Whisper-Verarbeitung läuft noch. Wenn Sie die Seite verlassen, wird der Prozess abgebrochen."
 msgstr "Whisper processing is still running. If you leave the page, the process will be aborted."
