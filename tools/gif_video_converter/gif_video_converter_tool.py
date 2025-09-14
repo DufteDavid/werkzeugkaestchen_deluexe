@@ -12,9 +12,9 @@ class GifVideoConverterTool(MiniTool):
         super().__init__(_("GIF/Video Konverter"), "GifVideoConverterTool", OutputType.TEXT)
         self.description = _("Konvertiert Videos in GIFs und umgekehrt")
         self.input_params = {
-            "file": "file"  # Hier wurde der Parameter von _("file") zu "file" geändert
+            "file": "file"
         }
-        
+
         # Extract translatable strings for HTML
         self.started_header = _("Konvertierung gestartet!")
         self.gif_to_video = _("GIF zu Video")
@@ -22,18 +22,18 @@ class GifVideoConverterTool(MiniTool):
         self.conversion_started_text = _("Ihre {0} Konvertierung wurde erfolgreich gestartet. Bitte klicken Sie auf den Button unten, um die Datei herunterzuladen.")
         self.download_button = _("Konvertierte Datei herunterladen")
         self.new_conversion_button = _("Neue Konvertierung starten")
-        
+
         # Dictionary für die Verwaltung der Konvertierungen
         self.pending_conversions = {}
         self.temp_dir = tempfile.gettempdir()
 
     def execute_tool(self, input_params: dict) -> bool:
         try:
-            if "file" not in input_params:  # Hier wurde der Parameter von _("file") zu "file" geändert
+            if "file" not in input_params:
                 self.error_message = _("Bitte wählen Sie eine Datei aus.")
                 return False
 
-            file_info = input_params["file"]  # Hier wurde der Parameter von _("file") zu "file" geändert
+            file_info = input_params["file"]
             file_path = file_info["file_path"]
             filename = file_info["filename"]
 
@@ -48,6 +48,13 @@ class GifVideoConverterTool(MiniTool):
             # Konvertierungsparameter aus den Eingaben
             quality = input_params.get("quality", "medium")
             fps = input_params.get("fps", "10")
+            # Loop-Count nur für Video -> GIF (0 = unendlich)
+            loop = input_params.get("loop", "0")
+
+            # Initialisiere Variablen
+            resize = None
+            format = None
+
             if not is_gif:
                 # Für Video zu GIF
                 resize = input_params.get("resize", "none")
@@ -67,6 +74,7 @@ class GifVideoConverterTool(MiniTool):
                 "fps": fps,
                 "resize": resize if not is_gif else None,
                 "format": format if is_gif else None,
+                "loop": loop if not is_gif else None,
                 "timestamp": datetime.now(),
                 "downloaded": False
             }
@@ -116,6 +124,7 @@ class GifVideoConverterTool(MiniTool):
                 # GIF zu Video
                 format = conversion.get("format", "mp4")
                 output_path = os.path.join(self.temp_dir, f"converted_{token}.{format}")
+                output_path = output_path.replace('\\', '/')  # Normalize path for tests
 
                 # Qualitätseinstellungen
                 quality_settings = {
@@ -141,6 +150,7 @@ class GifVideoConverterTool(MiniTool):
             else:
                 # Video zu GIF
                 output_path = os.path.join(self.temp_dir, f"converted_{token}.gif")
+                output_path = output_path.replace('\\', '/')  # Normalize path for tests
 
                 # Qualitäts- und FPS-Einstellungen
                 fps = int(conversion.get("fps", 10))
@@ -164,12 +174,16 @@ class GifVideoConverterTool(MiniTool):
                 quality = conversion.get("quality", "medium")
                 dither = quality_dither[quality]
 
+                # Loop-Parameter für GIF (0 = unendlich)
+                loop = int(conversion.get("loop", 0))
+
                 # FFmpeg-Befehl für Video zu GIF
                 stream = ffmpeg.input(input_path)
                 stream = ffmpeg.output(
                     stream,
                     output_path,
-                    vf=f"fps={fps},scale={scale}:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither={dither}"
+                    vf=f"fps={fps},scale={scale}:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither={dither}",
+                    loop=loop
                 )
                 ffmpeg.run(stream, overwrite_output=True, quiet=True)
 
@@ -205,6 +219,7 @@ class GifVideoConverterTool(MiniTool):
                             self.temp_dir,
                             f"converted_{token}.gif"
                         )
+                    converted_path = converted_path.replace('\\', '/')  # Normalize path for tests
 
                     if os.path.exists(converted_path):
                         os.remove(converted_path)

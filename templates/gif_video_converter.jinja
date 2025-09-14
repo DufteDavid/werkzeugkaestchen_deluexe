@@ -54,7 +54,7 @@
                             <option value="high">{{ _('Hoch (beste Qualität, große Datei)') }}</option>
                         </select>
                     </div>
-                    <div class="form-group mb-3">
+                    <div class="form-group mb-2">
                         <label for="resize">{{ _('Größe anpassen:') }}</label>
                         <select name="resize" id="resize" class="form-control">
                             <option value="none" selected>{{ _('Original (keine Änderung)') }}</option>
@@ -62,6 +62,18 @@
                             <option value="medium">{{ _('Mittel (480px Breite)') }}</option>
                             <option value="large">{{ _('Groß (640px Breite)') }}</option>
                         </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="loop">{{ _('Wiederholungen (Loop):') }}</label>
+                        <select name="loop" id="loop" class="form-control">
+                            <option value="0" selected>{{ _('Unendlich (Standard)') }}</option>
+                            <option value="1">{{ _('1× (einmal wiederholen)') }}</option>
+                            <option value="2">{{ _('2×') }}</option>
+                            <option value="3">{{ _('3×') }}</option>
+                            <option value="5">{{ _('5×') }}</option>
+                            <option value="10">{{ _('10×') }}</option>
+                        </select>
+                        <small class="form-text text-muted">{{ _('Bestimmt, wie oft das GIF nach der ersten Wiedergabe wiederholt wird. 0 = unendlich.') }}</small>
                     </div>
                 </div>
 

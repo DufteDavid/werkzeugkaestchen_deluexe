@@ -112,6 +112,10 @@ TOOL_DESCRIPTIONS = {
     "TimezoneConverterTool": {
         "description": _("Konvertiert Datum und Uhrzeit zwischen verschiedenen Zeitzonen weltweit. Berücksichtigt automatisch Sommerzeit und andere zeitzonespezifische Regeln für präzise Umrechnungen."),
         "use_cases": [_("Planung internationaler Meetings und Anrufe"), _("Koordination globaler Projekte"), _("Umrechnung für Reiseplanung und Flugzeiten"), _("Synchronisation weltweiter Events")]
+    },
+    "VideoImageConverterTool": {
+        "description": _("Konvertiert Videos in Bildsequenzen (ZIP-Archiv) und Bildsequenzen zurück in Videos. Ideal für die Bearbeitung von Video-Frames und die Erstellung von Videos aus Bildserien."),
+        "use_cases": [_("Extraktion von Video-Frames für Bildbearbeitung"), _("Erstellung von Stop-Motion-Videos aus Bildern"), _("Analyse von Videoinhalten Frame für Frame"), _("Umwandlung von Bildserien in Videos")]
     }
 }
 

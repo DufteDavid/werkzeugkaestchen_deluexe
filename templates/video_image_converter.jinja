@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% block title %}{{ _('Video/Bild Konverter') }}{% endblock %}
+{% block page_title %}{{ _('Video/Bild Konverter') }}{% endblock %}
+{% block content %}
+<div class="mb-4">
+    <p class="lead text-secondary">{{ description }}</p>
+
+    {% if use_cases %}
+    <div class="mt-4">
+        <p class="mb-2 fw-semibold">{{ _('Anwendungsfälle:') }}</p>
+        <ul class="ps-4 text-dark-emphasis">
+            {% for use_case in use_cases %}
+            <li class="mb-1">{{ use_case }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<div class="alert alert-info">
+  <p>{{ _('Konvertieren Sie Videos in Bildsequenzen (ZIP-Archiv) oder ZIP-Archive mit Bildern in Videos.') }}</p>
+  <p>{{ _('Maximale Dateigröße: 2GB') }}</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">{{ _('Video/Bild Konvertierung') }}</h5>
+        <p class="card-text">{{ _('Wählen Sie eine Videodatei oder ein ZIP-Archiv mit Bildern aus.') }}</p>
+
+        <form action="{{ url_for('handle_tool') }}" method="post" enctype="multipart/form-data" id="toolForm">
+            <input type="hidden" name="tool_name" value="VideoImageConverterTool">
+
+            <div class="form-group mb-3">
+                <label for="conversion_type">{{ _('Konvertierungstyp:') }}</label>
+                <select name="conversion_type" id="conversion_type" class="form-control" onchange="handleConversionTypeChange()" required>
+                    <option value="video_to_images">{{ _('Video zu Bildern (ZIP)') }}</option>
+                    <option value="images_to_video">{{ _('Bilder (ZIP) zu Video') }}</option>
+                </select>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="file" id="fileLabel">{{ _('Videodatei auswählen (max. 2GB):') }}</label>
+                <input type="file" class="form-control" name="file" id="file" accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.m4v" required onchange="handleFileSelect(this)">
+            </div>
+
+            <div id="conversionOptions" style="display: none;">
+                <div id="videoToImagesOptions">
+                    <h6>{{ _('Video zu Bilder Optionen:') }}</h6>
+                    <div class="form-group mb-2">
+                        <label for="fps">{{ _('Extraktionsrate (FPS):') }}</label>
+                        <select name="fps" id="fps" class="form-control">
+                            <option value="1">{{ _('1 FPS (jede Sekunde ein Bild)') }}</option>
+                            <option value="5">{{ _('5 FPS') }}</option>
+                            <option value="10" selected>{{ _('10 FPS (Standard)') }}</option>
+                            <option value="15">{{ _('15 FPS') }}</option>
+                            <option value="24">{{ _('24 FPS (alle Frames)') }}</option>
+                            <option value="30">{{ _('30 FPS (hohe Frequenz)') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="image_format">{{ _('Bildformat:') }}</label>
+                        <select name="image_format" id="image_format" class="form-control">
+                            <option value="png" selected>{{ _('PNG (verlustfrei, größere Dateien)') }}</option>
+                            <option value="jpg">{{ _('JPG (komprimiert, kleinere Dateien)') }}</option>
+                            <option value="bmp">{{ _('BMP (unkomprimiert)') }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="imagesToVideoOptions" style="display: none;">
+                    <h6>{{ _('Bilder zu Video Optionen:') }}</h6>
+                    <div class="form-group mb-2">
+                        <label for="video_fps">{{ _('Bildrate (FPS):') }}</label>
+                        <select name="fps" id="video_fps" class="form-control">
+                            <option value="5">{{ _('5 FPS (langsam)') }}</option>
+                            <option value="10" selected>{{ _('10 FPS (Standard)') }}</option>
+                            <option value="15">{{ _('15 FPS (flüssig)') }}</option>
+                            <option value="24">{{ _('24 FPS (Kinostandard)') }}</option>
+                            <option value="30">{{ _('30 FPS (sehr flüssig)') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label for="video_format">{{ _('Videoformat:') }}</label>
+                        <select name="video_format" id="video_format" class="form-control">
+                            <option value="mp4" selected>{{ _('MP4 (am besten unterstützt)') }}</option>
+                            <option value="avi">{{ _('AVI (gute Qualität)') }}</option>
+                            <option value="webm">{{ _('WebM (kleine Dateigröße)') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="video_quality">{{ _('Qualität:') }}</label>
+                        <select name="quality" id="video_quality" class="form-control">
+                            <option value="low">{{ _('Niedrig (kleine Dateigröße)') }}</option>
+                            <option value="medium" selected>{{ _('Mittel (ausgewogenes Verhältnis)') }}</option>
+                            <option value="high">{{ _('Hoch (beste Qualität, große Datei)') }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="progressContainer" style="display: none;" class="mt-3">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progressText" class="text-center mt-1">0%</div>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="fancy-button" id="submitButton">{{ _('Konvertieren') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-5">
+    <h5>{{ _('Erklärungen') }}</h5>
+    <div class="row">
+        <div class="col-md-6">
+            <h6>{{ _('Video zu Bildern') }}</h6>
+            <p>{{ _('<strong>Extraktionsrate (FPS):</strong> Bestimmt, wie viele Bilder pro Sekunde aus dem Video extrahiert werden:') | safe }}</p>
+            <ul>
+                <li>{{ _('<strong>1 FPS:</strong> Ein Bild pro Sekunde, ideal für Zeitraffer-Analysen') | safe }}</li>
+                <li>{{ _('<strong>10 FPS:</strong> Standard-Einstellung für die meisten Anwendungen') | safe }}</li>
+                <li>{{ _('<strong>24-30 FPS:</strong> Alle oder fast alle Frames, für detaillierte Analysen') | safe }}</li>
+            </ul>
+            <p>{{ _('<strong>Bildformate:</strong>') | safe }}</p>
+            <ul>
+                <li>{{ _('<strong>PNG:</strong> Verlustfrei, beste Qualität, größere Dateien') | safe }}</li>
+                <li>{{ _('<strong>JPG:</strong> Komprimiert, kleinere Dateien, leichter Qualitätsverlust') | safe }}</li>
+                <li>{{ _('<strong>BMP:</strong> Unkomprimiert, sehr große Dateien') | safe }}</li>
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h6>{{ _('Bilder zu Video') }}</h6>
+            <p>{{ _('<strong>ZIP-Anforderungen:</strong> Die ZIP-Datei sollte Bilder im PNG, JPG, GIF, BMP, WEBP oder TIFF Format enthalten. Die Bilder werden alphabetisch sortiert und zu einem Video zusammengefügt.') | safe }}</p>
+            <p>{{ _('<strong>Bildrate (FPS):</strong> Bestimmt die Geschwindigkeit der Video-Wiedergabe:') | safe }}</p>
+            <ul>
+                <li>{{ _('<strong>5 FPS:</strong> Langsame Wiedergabe, gut für Stop-Motion') | safe }}</li>
+                <li>{{ _('<strong>10 FPS:</strong> Standard für die meisten Anwendungen') | safe }}</li>
+                <li>{{ _('<strong>24-30 FPS:</strong> Flüssige Wiedergabe, professionelle Qualität') | safe }}</li>
+            </ul>
+            <p>{{ _('<strong>Hinweis:</strong> Alle Bilder werden automatisch auf die Größe des ersten Bildes angepasst.') | safe }}</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+#conversionOptions {
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+}
+
+#videoToImagesOptions, #imagesToVideoOptions {
+    padding-top: 10px;
+}
+
+.progress {
+    height: 20px;
+}
+
+.progress-bar {
+    background-color: var(--accent-color);
+}
+
+#progressText {
+    font-size: 14px;
+    color: #666;
+    font-weight: bold;
+}
+</style>
+
+<script>
+function handleConversionTypeChange() {
+    const conversionType = document.getElementById('conversion_type').value;
+    const fileInput = document.getElementById('file');
+    const fileLabel = document.getElementById('fileLabel');
+    const videoToImagesOptions = document.getElementById('videoToImagesOptions');
+    const imagesToVideoOptions = document.getElementById('imagesToVideoOptions');
+    
+    if (conversionType === 'video_to_images') {
+        fileInput.accept = '.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.m4v';
+        fileLabel.textContent = '{{ _("Videodatei auswählen (max. 2GB):") }}';
+        videoToImagesOptions.style.display = 'block';
+        imagesToVideoOptions.style.display = 'none';
+    } else {
+        fileInput.accept = '.zip';
+        fileLabel.textContent = '{{ _("ZIP-Datei mit Bildern auswählen (max. 2GB):") }}';
+        videoToImagesOptions.style.display = 'none';
+        imagesToVideoOptions.style.display = 'block';
+    }
+    
+    // Reset file input
+    fileInput.value = '';
+    document.getElementById('conversionOptions').style.display = 'none';
+}
+
+function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const conversionType = document.getElementById('conversion_type').value;
+        
+        // Zeige die entsprechenden Optionen
+        document.getElementById('conversionOptions').style.display = 'block';
+        
+        // Überprüfe die Dateigröße
+        const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
+        if (file.size > maxSize) {
+            alert('{{ _("Die Datei ist zu groß. Maximale Größe ist 2GB.") }}');
+            input.value = '';
+            document.getElementById('conversionOptions').style.display = 'none';
+            return;
+        }
+        
+        // Überprüfe Dateityp
+        const filename = file.name.toLowerCase();
+        if (conversionType === 'video_to_images') {
+            const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v'];
+            const isValidVideo = videoExtensions.some(ext => filename.endsWith(ext));
+            if (!isValidVideo) {
+                alert('{{ _("Bitte wählen Sie eine gültige Videodatei aus.") }}');
+                input.value = '';
+                document.getElementById('conversionOptions').style.display = 'none';
+            }
+        } else {
+            if (!filename.endsWith('.zip')) {
+                alert('{{ _("Bitte wählen Sie eine ZIP-Datei aus.") }}');
+                input.value = '';
+                document.getElementById('conversionOptions').style.display = 'none';
+            }
+        }
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    handleConversionTypeChange();
+});
+</script>
+
+{% endblock %}

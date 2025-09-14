@@ -34,6 +34,7 @@ from tools.text_summary.text_summary_tool import TextSummaryTool
 from tools.pdf_merge.pdf_merge_tool import PdfMergeTool
 from tools.file_size_converter.file_size_converter_tool import FileSizeConverterTool
 from tools.ocr_scanner.ocr_scanner_tool import OcrScannerTool
+from tools.video_image_converter.video_image_converter_tool import VideoImageConverterTool
 
 
 # Erstellen einer Flask-Anwendung
@@ -153,6 +154,7 @@ tools = {
     "PdfMergeTool": PdfMergeTool(),
     "TimezoneConverterTool": TimezoneConverterTool(),
     "OcrScannerTool": OcrScannerTool(),
+    "VideoImageConverterTool": VideoImageConverterTool(),
 }
 
 
@@ -577,6 +579,35 @@ def download_converted_media(token):
     @response.call_on_close
     def cleanup():
         # Als heruntergeladen markieren und aufräumen
+        converter_tool.pending_conversions[token]['downloaded'] = True
+        converter_tool.cleanup_old_files()
+
+    return response
+
+
+@app.route('/download_video_image_conversion/<token>', methods=['GET', 'POST'])
+def download_video_image_conversion(token):
+    converter_tool = tools.get("VideoImageConverterTool")
+    if not converter_tool:
+        return "Tool nicht gefunden", 404
+
+    temp_path = converter_tool.convert_and_save(token)
+    if not temp_path:
+        return "Konvertierung fehlgeschlagen oder Token ungültig", 404
+
+    conversion = converter_tool.pending_conversions[token]
+    conversion_type = conversion["conversion_type"]
+
+    if conversion_type == "video_to_images":
+        filename = os.path.splitext(conversion["filename"])[0] + "_frames.zip"
+    else:
+        video_format = conversion.get("video_format", "mp4")
+        filename = os.path.splitext(conversion["filename"])[0] + f"_video.{video_format}"
+
+    response = send_file(temp_path, as_attachment=True, download_name=filename)
+
+    @response.call_on_close
+    def cleanup():
         converter_tool.pending_conversions[token]['downloaded'] = True
         converter_tool.cleanup_old_files()
 

@@ -100,7 +100,30 @@ class TestGifVideoConverterTool:
         assert conversion_data["fps"] == "15"
         assert conversion_data["resize"] == "medium"
         assert conversion_data["format"] is None
+        assert conversion_data["loop"] == "0"  # Default loop value
         assert conversion_data["downloaded"] is False
+
+    def test_execute_tool_video_to_gif_with_custom_loop(self, converter_tool, mock_dependencies):
+        """Test successful execution for Video to GIF conversion with custom loop count."""
+        input_params = {
+            "file": {"file_path": "/fake/path/video.mp4", "filename": "video.mp4"},
+            "quality": "medium",
+            "fps": "10",
+            "resize": "small",
+            "loop": "3"
+        }
+        expected_token = "12345678-1234-5678-1234-567812345678"
+
+        result = converter_tool.execute_tool(input_params)
+
+        assert result is True
+        assert converter_tool.error_message == ""
+        assert expected_token in converter_tool.pending_conversions
+        conversion_data = converter_tool.pending_conversions[expected_token]
+        assert conversion_data["loop"] == "3"
+        assert conversion_data["quality"] == "medium"
+        assert conversion_data["fps"] == "10"
+        assert conversion_data["resize"] == "small"
 
     def test_execute_tool_gif_to_video_success(self, converter_tool, mock_dependencies):
         """Test successful execution for GIF to Video conversion."""
@@ -126,6 +149,7 @@ class TestGifVideoConverterTool:
         assert conversion_data["fps"] == "10" # Default FPS
         assert conversion_data["resize"] is None
         assert conversion_data["format"] == "webm"
+        assert conversion_data["loop"] is None  # No loop for GIF to video
         assert conversion_data["downloaded"] is False
 
     def test_convert_and_save_video_to_gif(self, converter_tool, mock_dependencies):
@@ -152,7 +176,38 @@ class TestGifVideoConverterTool:
         ffmpeg_mock.output.assert_called_once_with(
             ffmpeg_mock, # The stream object from input()
             expected_output_path,
-            vf="fps=12,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=2"
+            vf="fps=12,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=2",
+            loop=0  # Default loop value
+        )
+        ffmpeg_mock.run.assert_called_once_with(ffmpeg_mock, overwrite_output=True, quiet=True)
+
+    def test_convert_and_save_video_to_gif_with_custom_loop(self, converter_tool, mock_dependencies):
+        """Test the convert_and_save method for Video to GIF with custom loop count."""
+        # First, execute the tool to set up the conversion with custom loop
+        input_params = {
+            "file": {"file_path": "/fake/path/video.mp4", "filename": "video.mp4"},
+            "quality": "high",
+            "fps": "15",
+            "resize": "large",
+            "loop": "5"
+        }
+        token = "12345678-1234-5678-1234-567812345678"
+        converter_tool.execute_tool(input_params) # Sets up pending_conversions
+
+        # Mock ffmpeg calls specifically for this conversion type
+        ffmpeg_mock.input.return_value = ffmpeg_mock
+        ffmpeg_mock.output.return_value = ffmpeg_mock
+
+        expected_output_path = f"/tmp/test_temp/converted_{token}.gif"
+        output_path = converter_tool.convert_and_save(token)
+
+        assert output_path == expected_output_path
+        ffmpeg_mock.input.assert_called_once_with("/fake/path/video.mp4")
+        ffmpeg_mock.output.assert_called_once_with(
+            ffmpeg_mock, # The stream object from input()
+            expected_output_path,
+            vf="fps=15,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=4",
+            loop=5  # Custom loop value
         )
         ffmpeg_mock.run.assert_called_once_with(ffmpeg_mock, overwrite_output=True, quiet=True)
 
